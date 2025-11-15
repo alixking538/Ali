@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Eternal Store (نسخه موبایل)</title>
+<style>
+  :root{
+    --bg:#111;
+    --card:#222;
+    --muted:#999;
+    --accent:#0a84ff;
+    --accent-2:#6d28d9;
+    --success:#059669;
+    --danger:#ef4444;
+    --text:#fff;
+  }
+  html,body{height:100%;margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Vazirmatn",sans-serif}
+  .container{max-width:900px;margin:0 auto;padding:16px}
+  .box{background:var(--card);padding:16px;border-radius:12px;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,0.5)}
+  h1,h2,h3{margin:0 0 8px 0}
+  input,select,button,textarea{
+    width:100%;padding:10px;border-radius:8px;border:none;background:#0f1720;color:var(--text);
+    box-sizing:border-box;font-size:15px;
+  }
+  input::placeholder{color:var(--muted)}
+  button{background:var(--accent);color:var(--text);font-weight:700;cursor:pointer}
+  button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--accent)}
+  .link{display:block;text-align:center;color:var(--accent);margin-top:8px;cursor:pointer}
+  .row{display:flex;gap:10px}
+  .hidden{display:none!important}
+
+/* header */
+  header.appbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+  .brand{font-weight:800;font-size:18px;color:var(--text)}
+  .btn-inline{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+  .btn-cart{background:var(--success);color:#fff;position:relative}
+  .cart-count{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px}
+
+/* categories */
+  .categories{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .category-btn{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer}
+  .category-btn.active{background:var(--accent);color:#fff;border:1px solid rgba(255,255,255,0.06)}
+
+/* products grid */
+  .products{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:660px){ .products{grid-template-columns:repeat(2,1fr)} }
+  .product{
+    background:#141414;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;
+    box-shadow:0 6px 14px rgba(0,0,0,0.6);
+  }
+  .product .media{width:100%;height:180px;overflow:hidden;background:#0b0b0b}
+  .product img{width:100%;height:100%;object-fit:cover;display:block}
+  .product .body{padding:12px;display:flex;flex-direction:column;gap:8px}
+  .product h4{margin:0;font-size:17px}
+  .product p.desc{margin:0;color:var(--muted);font-size:14px}
+  .meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .price{color:var(--success);font-weight:800}
+  .product .actions{display:flex;gap:8px;margin-top:8px}
+
+/* admin remove small */
+  .admin-remove{background:var(--danger);padding:8px 10px;border-radius:8px;color:#fff;border:none;cursor:pointer}
+
+/* cart modal */
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:flex-end;justify-content:center;padding:12px;box-sizing:border-box}
+  .modal.open{display:flex}
+  .modal .sheet{width:100%;max-height:78vh;background:var(--card);border-radius:12px;padding:12px;overflow:auto}
+  .cart-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed rgba(255,255,255,0.03)}
+  .cart-summary{margin-top:12px;text-align:right;font-weight:800;color:var(--text)}
+
+/* small helpers */
+  .muted{color:var(--muted);font-size:13px}
+  .center{text-align:center}
+  .flex{display:flex;align-items:center;gap:8px}
+  .gap-8{gap:8px}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header class="appbar">
+    <div class="brand">فروشگاه Eternal</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-inline btn-cart" id="cartBtn" onclick="openCart()">
+        سبد خرید
+        <div class="cart-count" id="cartCount">0</div>
+      </button>
+      <button class="btn-inline" id="logoutBtn" style="display:none" onclick="doLogout()">خروج</button>
+    </div>
+  </header>
+
+  <!-- LOGIN BOX -->
+  <section id="loginBox" class="box">
+    <h2>ورود</h2>
+    <input id="loginUser" placeholder="نام کاربری" autocomplete="username">
+    <input id="loginPass" placeholder="رمز عبور" type="password" autocomplete="current-password">
+    <button onclick="handleLogin()">ورود</button>
+    <span class="link" onclick="showRegister()">ساخت اکانت</span>
+    <span class="link" onclick="showForgot()">فراموشی رمز</span>
+    <div class="muted center" style="margin-top:10px">ادمین: <strong>admin</strong> / 1234 (برای دسترسی به پنل)</div>
+  </section>
+
+  <!-- REGISTER BOX -->
+  <section id="registerBox" class="box hidden">
+    <h2>ساخت اکانت</h2>
+    <input id="regUser" placeholder="نام کاربری">
+    <input id="regPass" placeholder="رمز عبور" type="password">
+    <input id="regPhone" placeholder="شماره موبایل">
+    <button onclick="sendRegisterCode()">ارسال کد ۴ رقمی</button>
+
+    <div id="registerVerify" class="hidden" style="margin-top:12px">
+      <input id="regCode" placeholder="کد ۴ رقمی">
+      <button onclick="finishRegister()">تأیید و ساخت حساب</button>
+    </div>
+
+    <span class="link" onclick="backToLogin()">بازگشت به ورود</span>
+  </section>
+
+  <!-- FORGOT BOX -->
+  <section id="forgotBox" class="box hidden">
+    <h2>فراموشی رمز</h2>
+    <input id="forgotPhone" placeholder="شماره موبایل">
+    <button onclick="handleForgot()">بازیابی (با شماره)</button>
+    <span class="link" onclick="backToLogin()">بازگشت</span>
+  </section>
+
+  <!-- STORE PANEL -->
+  <section id="storePanel" class="box hidden">
+    <h2 id="welcomeText">خوش آمدید</h2>
+
+    <div class="categories" style="margin:10px 0">
+      <button class="category-btn active" data-cat="all" onclick="selectCategory('all')">همه</button>
+      <button class="category-btn" data-cat="Car Permum" onclick="selectCategory('Car Permum')">Car Permum</button>
+      <button class="category-btn" data-cat="Items" onclick="selectCategory('Items')">Items</button>
+      <button class="category-btn" data-cat="Money" onclick="selectCategory('Money')">Money</button>
+    </div>
+
+    <div id="products" class="products"></div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="admin-panel hidden" style="margin-top:14px">
+      <h3 style="margin-bottom:8px">پنل ادمین — افزودن محصول</h3>
+      <input id="adminName" placeholder="نام محصول">
+      <input id="adminDesc" placeholder="توضیح محصول">
+      <input id="adminPrice" placeholder="قیمت (عدد)" type="number" />
+      <input id="adminImg" placeholder="لینک تصویر (http/https)">
+      <select id="adminCategory">
+        <option value="Car Permum">Car Permum</option>
+        <option value="Items">Items</option>
+        <option value="Money">Money</option>
+      </select>
+      <button class="admin-btn" onclick="addProduct()">افزودن محصول</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- CART MODAL -->
+<div id="cartModal" class="modal" onclick="closeCart(event)">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong>سبد خرید</strong>
+      <button onclick="closeCart(event)" style="background:transparent;color:var(--accent);border:none;font-weight:700">بستن</button>
+    </div>
+    <div id="cartItems"></div>
+    <div class="cart-summary" id="cartTotal">جمع کل: 0 تومان</div>
+    <div style="margin-top:12px">
+      <button onclick="checkout()">پرداخت (شبیه‌سازی)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- data & state ---------- */
+let state = {
+  users: JSON.parse(localStorage.getItem('es_users')||'[]'),
+  products: JSON.parse(localStorage.getItem('es_products')||JSON.stringify([
+    {name:"ماشین اسپرت",description:"ماشینی اسپرت و زیبا",price:1200000,image:"https://picsum.photos/id/1011/1000/600",category:"Car Permum"},
+    {name:"ست ابزار",description:"ست ابزار کاربردی برای همه",price:98000,image:"https://picsum.photos/id/103/1000/600",category:"Items"},
+    {name:"پول نقد",description:"پک اسکناس نمایشی",price:230000,image:"https://picsum.photos/id/1060/1000/600",category:"Money"},
+    {name:"ماشین لوکس",description:"لوکس و شیک",price:2500000,image:"https://picsum.photos/id/1003/1000/600",category:"Car Permum"},
+    {name:"لپ‌تاپ",description:"لپ‌تاپ قدرتمند",price:1800000,image:"https://picsum.photos/id/180/1000/600",category:"Items"},
+    {name:"سکه طلا",description:"سکه طلا ارزشمند",price:500000,image:"https://picsum.photos/id/1025/1000/600",category:"Money"}
+  ])),
+  cart: JSON.parse(localStorage.getItem('es_cart')||'[]'),
+  currentUser: null,
+  currentCategory: 'all',
+  regCode: null
+};
+
+/* ---------- helpers ---------- */
+function saveState(){
+  localStorage.setItem('es_users', JSON.stringify(state.users));
+  localStorage.setItem('es_products', JSON.stringify(state.products));
+  localStorage.setItem('es_cart', JSON.stringify(state.cart));
+}
+
+function formatPrice(n){ return n.toLocaleString('fa-IR') + ' تومان'; }
+
+/* ---------- UI control ---------- */
+const loginBox = document.getElementById('loginBox');
+const registerBox = document.getElementById('registerBox');
+const forgotBox = document.getElementById('forgotBox');
+const storePanel = document.getElementById('storePanel');
+const adminPanel = document.getElementById('adminPanel');
+const cartModal = document.getElementById('cartModal');
+const cartCount = document.getElementById('cartCount');
+const welcomeText = document.getElementById('welcomeText');
+
+/* ---------- navigation ---------- */
+function showRegister(){
+  loginBox.classList.add('hidden');
+  registerBox.classList.remove('hidden');
+  forgotBox.classList.add('hidden');
+  storePanel.classList.add('hidden');
+}
+function showForgot(){
+  loginBox.classList.add('hidden');
+  forgotBox.classList.remove('hidden');
+  registerBox.classList.add('hidden');
+  storePanel.classList.add('hidden');
+}
+function backToLogin(){
+  loginBox.classList.remove('hidden');
+  registerBox.classList.add('hidden');
+  forgotBox.classList.add('hidden');
+  storePanel.classList.add('hidden');
+}
+function showStore(){
+  loginBox.classList.add('hidden');
+  registerBox.classList.add('hidden');
+  forgotBox.classList.add('hidden');
+  storePanel.classList.remove('hidden');
+}
+
+/* ---------- registration (with simulated SMS code) ---------- */
+function sendRegisterCode(){
+  const user = document.getElementById('regUser').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const phone = document.getElementById('regPhone').value.trim();
+  if(!user || !pass || !phone){ alert('لطفاً همه فیلدها را کامل کنید'); return; }
+  if(state.users.find(u=>u.username===user)){ alert('این نام کاربری قبلاً ثبت شده'); return; }
+  // generate 4-digit code (simulate SMS): show in alert
+  const code = Math.floor(1000 + Math.random()*9000).toString();
+  state.regCode = code;
+  alert('کد تایید شبیه‌سازی شده: ' + code + '\n(در نسخه واقعی این کد به شماره ارسال می‌شود)');
+  document.getElementById('registerVerify').classList.remove('hidden');
+}
+
+function finishRegister(){
+  const entered = document.getElementById('regCode').value.trim();
+  if(!state.regCode || entered !== state.regCode){ alert('کد نادرست است'); return; }
+  const username = document.getElementById('regUser').value.trim();
+  const password = document.getElementById('regPass').value;
+  const phone = document.getElementById('regPhone').value.trim();
+  state.users.push({username,password,phone});
+  saveState();
+  alert('حساب با موفقیت ساخته شد. اکنون وارد شوید.');
+  state.regCode = null;
+  document.getElementById('regCode').value = '';
+  document.getElementById('regUser').value = '';
+  document.getElementById('regPass').value = '';
+  document.getElementById('regPhone').value = '';
+  document.getElementById('registerVerify').classList.add('hidden');
+  backToLogin();
+}
+
+/* ---------- login ---------- */
+function handleLogin(){
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if(user === 'admin' && pass === '1234'){
+    state.currentUser = 'admin';
+    openStoreForUser();
+    return;
+  }
+  const found = state.users.find(u => u.username === user && u.password === pass);
+  if(!found){ alert('نام کاربری یا رمز اشتباه است'); return; }
+  state.currentUser = found.username;
+  openStoreForUser();
+}
+
+function openStoreForUser(){
+  showStore();
+  welcomeText.innerText = 'خوش آمدی ' + (state.currentUser === 'admin' ? 'ادمین' : state.currentUser);
+  document.getElementById('logoutBtn').style.display = 'inline-flex';
+  if(state.currentUser === 'admin'){
+    adminPanel.classList.remove('hidden');
+  } else {
+    adminPanel.classList.add('hidden');
+  }
+  renderProducts();
+  updateCartUI();
+}
+
+/* ---------- forgot password (by phone) ---------- */
+function handleForgot(){
+  const phone = document.getElementById('forgotPhone').value.trim();
+  if(!phone){ alert('شماره را وارد کنید'); return; }
+  const found = state.users.find(u=>u.phone === phone);
+  if(!found){ alert('حسابی با این شماره ثبت نشده'); return; }
+  // Reveal username & password (as requested)
+  alert('نام کاربری: ' + found.username + '\nرمز: ' + found.password);
+  backToLogin();
+}
+
+/* ---------- products rendering & filtering ---------- */
+function selectCategory(cat){
+  state.currentCategory = cat;
+  // update active class
+  document.querySelectorAll('.category-btn').forEach(b=>b.classList.toggle('active', b.dataset.cat === cat));
+  renderProducts();
+}
+
+function renderProducts(){
+  const box = document.getElementById('products');
+  box.innerHTML = '';
+  const list = (state.currentCategory === 'all') ? state.products : state.products.filter(p=>p.category === state.currentCategory);
+  if(list.length === 0){
+    box.innerHTML = '<div class="muted center">محصولی یافت نشد</div>'; return;
+  }
+  list.forEach((p, idx) => {
+    const card = document.createElement('article');
+    card.className = 'product';
+    card.innerHTML = `
+      <div class="media"><img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}"></div>
+      <div class="body">
+        <h4>${escapeHTML(p.name)}</h4>
+        <p class="desc">${escapeHTML(p.description)}</p>
+        <div class="meta">
+          <div class="price">${formatPrice(p.price)}</div>
+          <div class="actions">
+            <button onclick="addToCart(${idx})">افزودن به سبد</button>
+            ${state.currentUser === 'admin' ? `<button class="admin-remove" onclick="removeProduct(${idx})">حذف</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+    box.appendChild(card);
+  });
+}
+
+/* ---------- admin: add/remove ---------- */
+function addProduct(){
+  const name = document.getElementById('adminName').value.trim();
+  const desc = document.getElementById('adminDesc').value.trim();
+  const price = parseInt(document.getElementById('adminPrice').value);
+  const img = document.getElementById('adminImg').value.trim();
+  const cat = document.getElementById('adminCategory').value;
+  if(!name || !desc || !price || !img){ alert('لطفاً همه فیلدها را پر کنید'); return; }
+  state.products.push({name,description:desc,price,image:img,category:cat});
+  saveState();
+  document.getElementById('adminName').value=''; document.getElementById('adminDesc').value=''; document.getElementById('adminPrice').value=''; document.getElementById('adminImg').value='';
+  renderProducts();
+  alert('محصول اضافه شد');
+}
+
+function removeProduct(index){
+  if(!confirm('آیا از حذف محصول مطمئن هستید؟')) return;
+  // need to compute index in filtered list vs full list
+  if(state.currentCategory === 'all'){
+    state.products.splice(index,1);
+  } else {
+    // find the global index of the nth filtered item
+    const filtered = state.products.filter(p=>p.category === state.currentCategory);
+    const item = filtered[index];
+    const globalIndex = state.products.findIndex(p=>p === item);
+    if(globalIndex > -1) state.products.splice(globalIndex,1);
+  }
+  saveState();
+  renderProducts();
+}
+
+/* ---------- cart logic ---------- */
+function addToCart(displayIndex){
+  // When filteredCategory != all, displayIndex is index in filtered list; map to product object
+  let product = null;
+  if(state.currentCategory === 'all'){
+    product = state.products[displayIndex];
+  } else {
+    const filtered = state.products.filter(p=>p.category === state.currentCategory);
+    product = filtered[displayIndex];
+  }
+  if(!product) return;
+  // push a shallow copy
+  state.cart.push(Object.assign({}, product));
+  saveState();
+  updateCartUI();
+  alert(product.name + ' به سبد اضافه شد');
+}
+
+function updateCartUI(){
+  cartCount.innerText = state.cart.length || 0;
+}
+
+function openCart(){
+  renderCart();
+  cartModal.classList.add('open');
+}
+
+function closeCart(e){
+  if(e && e.target !== cartModal && e.target.closest('.sheet')) return;
+  cartModal.classList.remove('open');
+}
+
+function renderCart(){
+  const container = document.getElementById('cartItems');
+  container.innerHTML = '';
+  if(state.cart.length === 0){
+    container.innerHTML = '<div class="muted center">سبد خرید خالی است</div>';
+    document.getElementById('cartTotal').innerText = 'جمع کل: 0 تومان';
+    return;
+  }
+  let total = 0;
+  state.cart.forEach((it, idx) => {
+    total += Number(it.price || 0);
+    const row = document.createElement('div');
+    row.className = 'cart-item';
+    row.innerHTML = `<div>${escapeHTML(it.name)} <div class="muted" style="font-size:13px">${formatPrice(it.price)}</div></div>
+                     <div><button onclick="removeFromCart(${idx})">حذف</button></div>`;
+    container.appendChild(row);
+  });
+  document.getElementById('cartTotal').innerText = 'جمع کل: ' + total.toLocaleString('fa-IR') + ' تومان';
+}
+
+function removeFromCart(i){
+  state.cart.splice(i,1);
+  saveState();
+  renderCart();
+  updateCartUI();
+}
+
+function checkout(){
+  if(state.cart.length === 0){ alert('سبد خرید خالی است'); return; }
+  // Simulated checkout
+  const total = state.cart.reduce((s,it)=>s + Number(it.price||0),0);
+  if(confirm('پرداخت شبیه‌سازی: جمع کل ' + total.toLocaleString('fa-IR') + ' تومان\nآیا ادامه می‌دهید؟')){
+    alert('پرداخت شبیه‌سازی شد. سفارش ثبت شد.');
+    state.cart = [];
+    saveState();
+    updateCartUI();
+    closeCart();
+  }
+}
+
+/* ---------- logout ---------- */
+function doLogout(){
+  state.currentUser = null;
+  document.getElementById('logoutBtn').style.display = 'none';
+  adminPanel.classList.add('hidden');
+  backToLogin();
+}
+
+/* ---------- utilities ---------- */
+function escapeHTML(s){ if(!s) return ''; return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
+/* ---------- init ---------- */
+(function init(){
+  // ensure cart count
+  updateCartUI();
+  // default render (not logged in)
+  renderProducts();
+})();
+</script>
+</body>
+</html>
